@@ -12,7 +12,7 @@ load_dotenv()
 
 # Initialize Slack client
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-CHANNEL_ID = os.environ["CHANNEL_ID"]
+CHANNEL_ID = os.environ["TEST_CHANNEL_ID"]
 
 def extract_social_links(text):
     """Extract Twitter/X and LinkedIn links from text."""
