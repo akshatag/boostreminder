@@ -14,10 +14,10 @@ load_dotenv()
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 CHANNEL_ID = os.environ["CHANNEL_ID"]
 
-def extract_twitter_links(text):
-    """Extract Twitter/X links from text."""
-    twitter_pattern = r'https?://(?:www\.)?(twitter\.com|x\.com)/[^\s]+'
-    return re.findall(twitter_pattern, text)
+def extract_social_links(text):
+    """Extract Twitter/X and LinkedIn links from text."""
+    pattern = r'https?://(?:www\.)?(twitter\.com|x\.com|linkedin\.com)/[^\s]+'
+    return re.findall(pattern, text)
 
 def get_channel_messages(since_ts):
     """Get messages from the channel after the given timestamp."""
@@ -32,7 +32,7 @@ def get_channel_messages(since_ts):
         return []
 
 def create_daily_thread():
-    """Create a thread with all Twitter links from the past day."""
+    """Create a thread with all social media posts from the past day."""
     # Get timestamp for 24 hours ago
     yesterday = datetime.now() - timedelta(days=1)
     yesterday_ts = yesterday.timestamp()
@@ -40,21 +40,23 @@ def create_daily_thread():
     # Get messages from the last 24 hours
     messages = get_channel_messages(yesterday_ts)
     
-    # Extract all Twitter links
+    # Extract all social media links
     all_links = []
     for message in messages:
         if "text" in message:
-            links = extract_twitter_links(message["text"])
+            links = extract_social_links(message["text"])
             all_links.extend(links)
     
     # Remove duplicates while preserving order
     unique_links = list(dict.fromkeys(all_links))
     
+    # If no links found, log and return early
     if not unique_links:
+        print(f"No Twitter/X or LinkedIn posts found in the last 24 hours. Skipping daily thread.")
         return
     
     # Create the main message
-    main_message = "🚀 *Daily Boost Reminder* 🚀\nHere are today's posts that need your support! Please take a moment to boost them. Every engagement helps increase our visibility! 💪"
+    main_message = "🚀 *Daily Boost Reminder* 🚀\nHere are today's Twitter/X and LinkedIn posts that need your support! Please take a moment to boost them. Every engagement helps increase our visibility! 💪"
     
     try:
         # Post the main message
@@ -71,6 +73,8 @@ def create_daily_thread():
             thread_ts=thread_ts,
             text=f"Here are all the posts from the last 24 hours:\n\n{link_message}"
         )
+        
+        print(f"Successfully posted daily thread with {len(unique_links)} social media posts")
         
     except SlackApiError as e:
         print(f"Error posting message: {e}")
