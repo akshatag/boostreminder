@@ -1,7 +1,7 @@
 {
   "version": 2,
   "crons": [{
-    "path": "/api/daily_boost",
+    "path": "/api/daily-boost",
     "schedule": "0 18 * * *"
   }]
 }
