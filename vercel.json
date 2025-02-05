@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "crons": [{
+    "path": "/api/daily-boost",
+    "schedule": "0 10 * * *"
+  }]
+}
