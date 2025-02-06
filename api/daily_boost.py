@@ -88,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
         # Initialize Slack client
         client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
         source_channel_id = os.environ["SOURCE_CHANNEL_ID"]
-        target_channel_id = os.environ["TEST_CHANNEL_ID"]
+        target_channel_id = os.environ["TARGET_CHANNEL_ID"]
         
         result = create_daily_thread(client, source_channel_id, target_channel_id, draft_mode=False)
         
