@@ -6,10 +6,10 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import html
 
-def extract_twitter_links(text):
-    """Extract Twitter/X links from text."""
+def extract_social_links(text):
+    """Extract Twitter/X and LinkedIn links from text."""
     # Pattern to match Slack's URL format: <url|url> or <url>
-    slack_pattern = r'<(https?://(?:www\.)?(?:twitter\.com|x\.com)/[^|>]+)(?:\|[^>]+)?>'
+    slack_pattern = r'<(https?://(?:www\.)?(?:twitter\.com|x\.com|linkedin\.com)/[^|>]+)(?:\|[^>]+)?>'
     matches = re.findall(slack_pattern, text)
     # Unescape HTML entities in the URLs
     return [html.unescape(url) for url in matches]
@@ -21,64 +21,61 @@ def get_channel_messages(client, channel_id, since_ts):
             channel=channel_id,
             oldest=since_ts
         )
-        print(f"Found {len(result['messages'])} messages")
+        print(f"Found {len(result['messages'])} messages in channel {channel_id}")
         return result["messages"]
     except SlackApiError as e:
-        print(f"Error getting messages: {e}")
+        print(f"Error getting messages from channel {channel_id}: {e}")
         return []
 
-def create_daily_thread(client, source_channel_id, target_channel_id, draft_mode=False):
-    """Create a thread with all Twitter links from the past day."""
+def should_boost_message(message):
+    """Check if a message should be boosted (contains #boost)."""
+    return "#boost" in message.get("text", "").lower()
+
+def create_daily_boost(client, source_channels, target_channel_id, draft_mode=False):
+    """Create a single message with all social media posts marked for boosting."""
     # Get timestamp for 24 hours ago
     yesterday = datetime.now() - timedelta(days=1)
     yesterday_ts = yesterday.timestamp()
     
-    # Get messages from the last 24 hours from source channel
-    messages = get_channel_messages(client, source_channel_id, yesterday_ts)
-    
-    # Extract all Twitter links
+    # Extract all social media links from both channels
     all_links = []
-    for message in messages:
-        if "text" in message:
-            print(f"\nProcessing message: {message['text']}")
-            links = extract_twitter_links(message["text"])
-            all_links.extend(links)
+    for channel_id in source_channels:
+        messages = get_channel_messages(client, channel_id, yesterday_ts)
+        for message in messages:
+            if "text" in message and should_boost_message(message):
+                print(f"\nProcessing boost message: {message['text']}")
+                links = extract_social_links(message["text"])
+                all_links.extend(links)
     
     # Remove duplicates while preserving order
     unique_links = list(dict.fromkeys(all_links))
-    print(f"\nFinal unique links: {unique_links}")
+    print(f"\nFinal unique links marked for boost: {unique_links}")
     
     if not unique_links:
-        return {"main_message": None, "thread_messages": None}
+        return "No posts marked for boost in the last 24 hours"
     
-    # Create the main message with @channel notification
-    main_message = "<!channel> 🚀 *Daily Boost Reminder* 🚀\nHere are today's posts that need your support! Please take a moment to boost each post in this thread. Every engagement helps increase our visibility! 💪"
+    # Create the message with all links
+    message_lines = [
+        "🚀 *Daily Boost Posts* 🚀",
+        "Here are today's posts marked with #boost that need your support! Every engagement helps increase our visibility! 💪\n"
+    ]
     
-    # Create individual messages for each link
-    thread_messages = [f"{link}" for link in unique_links]
+    # Add each link as a bullet point
+    for link in unique_links:
+        message_lines.append(f"• {link}")
+    
+    final_message = "\n".join(message_lines)
     
     if draft_mode:
-        return {
-            "main_message": main_message,
-            "thread_messages": thread_messages
-        }
+        return final_message
     
     try:
-        # Post the main message to target channel
+        # Post the message
         result = client.chat_postMessage(
             channel=target_channel_id,
-            text=main_message
+            text=final_message
         )
-        
-        # Create individual replies for each link
-        thread_ts = result["ts"]
-        for message in thread_messages:
-            client.chat_postMessage(
-                channel=target_channel_id,
-                thread_ts=thread_ts,
-                text=message
-            )
-        return "Thread created successfully"
+        return "Message posted successfully"
         
     except SlackApiError as e:
         return f"Error posting message: {e}"
@@ -87,10 +84,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Initialize Slack client
         client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-        source_channel_id = os.environ["SOURCE_CHANNEL_ID"]
+        source_channels = [
+            os.environ["SOURCE_CHANNEL_ID_1"],
+            os.environ["SOURCE_CHANNEL_ID_2"]
+        ]
         target_channel_id = os.environ["TARGET_CHANNEL_ID"]
         
-        result = create_daily_thread(client, source_channel_id, target_channel_id, draft_mode=False)
+        result = create_daily_boost(client, source_channels, target_channel_id, draft_mode=False)
         
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')

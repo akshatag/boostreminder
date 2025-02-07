@@ -1,53 +1,35 @@
-from api.daily_boost import create_daily_thread
+from dotenv import load_dotenv
 from slack_sdk import WebClient
 import os
-from dotenv import load_dotenv
-import json
+from api.daily_boost import create_daily_boost
 
-def test_boost_reminder(draft_mode=False):
-    # Load environment variables
-    load_dotenv()
-    
-    # Check if environment variables are set
-    if not os.getenv("SLACK_BOT_TOKEN"):
-        print("Error: SLACK_BOT_TOKEN not set in .env file")
-        return
-    if not os.getenv("SOURCE_CHANNEL_ID"):
-        print("Error: SOURCE_CHANNEL_ID not set in .env file")
-        return
-    if not os.getenv("TARGET_CHANNEL_ID"):
-        print("Error: TARGET_CHANNEL_ID not set in .env file")
-        return
-    
+# Load environment variables from .env file
+load_dotenv()
+
+def main():
     # Initialize Slack client
-    client = WebClient(token=os.getenv("SLACK_BOT_TOKEN"))
-    source_channel_id = os.getenv("SOURCE_CHANNEL_ID")
-    target_channel_id = os.getenv("TARGET_CHANNEL_ID")
+    client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
     
-    print("Running boost reminder...")
-    print(f"Reading from channel: {source_channel_id}")
-    print(f"{'Preview for' if draft_mode else 'Posting to'} channel: {target_channel_id}")
+    # Get channel IDs from environment variables
+    source_channels = [
+        os.environ["SOURCE_CHANNEL_ID_1"],
+        os.environ["SOURCE_CHANNEL_ID_2"]
+    ]
+    test_channel_id = os.environ["TEST_CHANNEL_ID"]
     
-    result = create_daily_thread(client, source_channel_id, target_channel_id, draft_mode=draft_mode)
+    # Run in draft mode first to see the output
+    print("\nTesting in draft mode...")
+    result = create_daily_boost(client, source_channels, test_channel_id, draft_mode=True)
+    print(f"\nDraft message:\n{result}")
     
-    if draft_mode:
-        if result["main_message"] is None:
-            print("\nNo Twitter/X links found in the last 24 hours!")
-            return
-        
-        print("\n=== DRAFT PREVIEW ===")
-        print("\nMain Message:")
-        print("-" * 50)
-        print(result["main_message"])
-        print("\nThread Replies:")
-        print("-" * 50)
-        for i, message in enumerate(result["thread_messages"], 1):
-            print(f"\nReply {i}:")
-            print(message)
-        print("\n=== END PREVIEW ===")
-    else:
+    # Ask for confirmation before posting
+    response = input("\nDo you want to post this message to the test channel? (y/n): ")
+    if response.lower() == 'y':
+        print("\nPosting to test channel...")
+        result = create_daily_boost(client, source_channels, test_channel_id, draft_mode=False)
         print(f"\nResult: {result}")
+    else:
+        print("\nAborted. No message was posted.")
 
 if __name__ == "__main__":
-    # Set draft_mode=False to post to Slack
-    test_boost_reminder(draft_mode=False)
+    main()
