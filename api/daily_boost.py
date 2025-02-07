@@ -21,31 +21,32 @@ def get_channel_messages(client, channel_id, since_ts):
             channel=channel_id,
             oldest=since_ts
         )
-        print(f"Found {len(result['messages'])} messages in channel {channel_id}")
+        print(f"Found {len(result['messages'])} messages in channel")
         return result["messages"]
     except SlackApiError as e:
-        print(f"Error getting messages from channel {channel_id}: {e}")
+        print(f"Error getting messages: {e}")
         return []
 
 def should_boost_message(message):
     """Check if a message should be boosted (contains #boost)."""
     return "#boost" in message.get("text", "").lower()
 
-def create_daily_boost(client, source_channels, target_channel_id, draft_mode=False):
+def create_daily_boost(client, source_channel_id, target_channel_id, draft_mode=False):
     """Create a single message with all social media posts marked for boosting."""
     # Get timestamp for 24 hours ago
     yesterday = datetime.now() - timedelta(days=1)
     yesterday_ts = yesterday.timestamp()
     
-    # Extract all social media links from both channels
+    # Get messages from the last 24 hours
+    messages = get_channel_messages(client, source_channel_id, yesterday_ts)
+    
+    # Extract all social media links from messages with #boost
     all_links = []
-    for channel_id in source_channels:
-        messages = get_channel_messages(client, channel_id, yesterday_ts)
-        for message in messages:
-            if "text" in message and should_boost_message(message):
-                print(f"\nProcessing boost message: {message['text']}")
-                links = extract_social_links(message["text"])
-                all_links.extend(links)
+    for message in messages:
+        if "text" in message and should_boost_message(message):
+            print(f"\nProcessing boost message: {message['text']}")
+            links = extract_social_links(message["text"])
+            all_links.extend(links)
     
     # Remove duplicates while preserving order
     unique_links = list(dict.fromkeys(all_links))
@@ -84,13 +85,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Initialize Slack client
         client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-        source_channels = [
-            os.environ["SOURCE_CHANNEL_ID_1"],
-            os.environ["SOURCE_CHANNEL_ID_2"]
-        ]
+        source_channel_id = os.environ["SOURCE_CHANNEL_ID"]
         target_channel_id = os.environ["TARGET_CHANNEL_ID"]
         
-        result = create_daily_boost(client, source_channels, target_channel_id, draft_mode=False)
+        result = create_daily_boost(client, source_channel_id, target_channel_id, draft_mode=False)
         
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')

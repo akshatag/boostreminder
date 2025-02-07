@@ -11,22 +11,19 @@ def main():
     client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
     
     # Get channel IDs from environment variables
-    source_channels = [
-        os.environ["SOURCE_CHANNEL_ID_1"],
-        os.environ["SOURCE_CHANNEL_ID_2"]
-    ]
+    source_channel_id = os.environ["SOURCE_CHANNEL_ID"]
     test_channel_id = os.environ["TEST_CHANNEL_ID"]
     
     # Run in draft mode first to see the output
     print("\nTesting in draft mode...")
-    result = create_daily_boost(client, source_channels, test_channel_id, draft_mode=True)
+    result = create_daily_boost(client, source_channel_id, test_channel_id, draft_mode=True)
     print(f"\nDraft message:\n{result}")
     
     # Ask for confirmation before posting
     response = input("\nDo you want to post this message to the test channel? (y/n): ")
     if response.lower() == 'y':
         print("\nPosting to test channel...")
-        result = create_daily_boost(client, source_channels, test_channel_id, draft_mode=False)
+        result = create_daily_boost(client, source_channel_id, test_channel_id, draft_mode=False)
         print(f"\nResult: {result}")
     else:
         print("\nAborted. No message was posted.")
