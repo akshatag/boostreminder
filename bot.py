@@ -62,7 +62,7 @@ def create_daily_thread():
         # Post the main message
         result = client.chat_postMessage(
             channel=CHANNEL_ID,
-            text=main_message
+            text="<!channel> " + main_message
         )
         
         # Create the thread with all links

@@ -57,8 +57,7 @@ def create_daily_boost(client, source_channel_id, target_channel_id, draft_mode=
     
     # Create the message with all links
     message_lines = [
-        "🚀 *Daily Boost Posts* 🚀",
-        "Here are today's posts marked with #boost that need your support! Every engagement helps increase our visibility! 💪\n"
+        "<!channel> Here are today's posts that need your support! Every engagement helps increase our visibility. Please take a moment to boost and react with 🚀 once you do\n"
     ]
     
     # Add each link as a bullet point
